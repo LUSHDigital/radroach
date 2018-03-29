@@ -1,0 +1,9 @@
+.DS_Store
+.buildpath
+.project
+.idea
+.settings
+.vagrant
+service/vendor
+service/build
+service/service-account.json
