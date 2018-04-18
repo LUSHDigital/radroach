@@ -10,8 +10,19 @@ var (
 	empty = []byte("")
 
 	simpleReplacements = map[*regexp.Regexp][]byte{
-		regexp.MustCompile("`"):                                         empty,
-		regexp.MustCompile(`^.* ENGINE=.*$/\)`):                         empty,
+		// Syntax
+		regexp.MustCompile("`"):                           empty,
+		regexp.MustCompile(`^.* ENGINE=.*$/\)`):           empty,
+		regexp.MustCompile(`\s\sKEY `):                    []byte("  INDEX "),
+		regexp.MustCompile(`\s\sFULLTEXT KEY `):           []byte("  INDEX "),
+		regexp.MustCompile("ON UPDATE CURRENT_TIMESTAMP"): empty,
+		regexp.MustCompile(" ON DELETE CASCADE"):          empty,
+		regexp.MustCompile("COMMENT.*,"):                  []byte(","),
+		regexp.MustCompile("DEFAULT b'0',$"):              []byte("DEFAULT 0,"),
+		regexp.MustCompile("DEFAULT b'1',$"):              []byte("DEFAULT 1,"),
+		regexp.MustCompile(`\s\sUNIQUE KEY `):             []byte("  UNIQUE INDEX "),
+
+		// Types
 		regexp.MustCompile(" double "):                                  []byte(" FLOAT "),
 		regexp.MustCompile(` int\((.*)\) `):                             []byte(" INT "),
 		regexp.MustCompile(` double\((.*)\) `):                          []byte(" FLOAT "),
@@ -23,17 +34,18 @@ var (
 		regexp.MustCompile(" unsigned "):                                []byte(" "),
 		regexp.MustCompile(" mediumtext,"):                              []byte(" TEXT,"),
 		regexp.MustCompile(` enum\((.*)\) `):                            []byte(" TEXT "),
-		regexp.MustCompile("  KEY "):                                    []byte("  INDEX "),
-		regexp.MustCompile("  FULLTEXT KEY "):                           []byte("  INDEX "),
-		regexp.MustCompile("ON UPDATE CURRENT_TIMESTAMP"):               empty,
-		regexp.MustCompile(" ON DELETE CASCADE"):                        empty,
-		regexp.MustCompile("DEFAULT b'0',$"):                            []byte("DEFAULT 0,"),
-		regexp.MustCompile("DEFAULT b'1',$"):                            []byte("DEFAULT 1,"),
 		regexp.MustCompile(`int DEFAULT '(.*)',$`):                      []byte("INT DEFAULT $1,"),
 		regexp.MustCompile(`int NOT NULL DEFAULT '(.*)',$`):             []byte("INT NOT NULL DEFAULT $1,"),
 		regexp.MustCompile(`\(decimal(.*)\) NOT NULL DEFAULT '(.*)',$`): []byte("$1 NOT NULL DEFAULT $2,"),
 		regexp.MustCompile(`\(decimal(.*)\) DEFAULT '(.*)',$`):          []byte("$1 DEFAULT $2,"),
-		regexp.MustCompile("  UNIQUE KEY "):                             []byte("  UNIQUE INDEX "),
+
+		// JSON
+		regexp.MustCompile(`\\"([A-Za-z0-9\\\-._~:/?#\[\]@!$&'()*+,;=]+)\\"`): []byte(`"$1"`),
+		regexp.MustCompile(`\\\\"`):                                           []byte(`"`),
+		regexp.MustCompile(`\\"{`):                                            []byte("{"),
+		regexp.MustCompile(`}\\"`):                                            []byte("}"),
+		regexp.MustCompile(`\\"`):                                             []byte(`"`),
+		regexp.MustCompile(`\\'`):                                             []byte(`''`),
 	}
 
 	blankLines     = regexp.MustCompile(`\s\s\n`)
