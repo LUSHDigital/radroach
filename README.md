@@ -33,7 +33,7 @@ Usage: radroach [FLAGS...] SOURCE_MYSQL_DUMP DESTINATION_CRDB_DUMP
 - [x] Load MySQL dump
 - [x] Simple regex replacements for types and syntax
 - [x] Break dump down by table, extract foreign keys
-- [ ] Re-write dump with foreign keys after table creation
-- [ ] Produce a working SQL dump for CockroachDB
-- [ ] Cobra cmd support
+- [x] Re-write dump with foreign keys after table creation
+- [x] Produce a working SQL dump for CockroachDB
 - [ ] Test all the things
+- [ ] Cobra cmd support
