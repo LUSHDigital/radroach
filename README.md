@@ -1,8 +1,6 @@
 # Radroach
 A _radical_ tool for converting [MySQL](https://www.mysql.com) database dumps for use with [CockroachDB](https://www.cockroachlabs.com/product/cockroachdb)
 
-> This package is not yet suitable for usage...in any way.
-
 ## Installation
 Install as you would a normal package:
 ```bash
