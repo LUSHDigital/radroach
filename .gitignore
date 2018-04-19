@@ -7,3 +7,6 @@
 service/vendor
 service/build
 service/service-account.json
+
+output.sql
+radroach-dev
