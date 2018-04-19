@@ -11,7 +11,7 @@ go get -u github.com/LUSHDigital/radroach
 Firstly you must have a pre-prepared MySQL dump ready for conversion. Radroach
 requires you to have created this using `mysqldump` with some specific options:
 ```bash
-mysqldump -h[host] -u[user] -p [database name] --compatible=postgresql --compact --skip-add-drop-table --skip-add-locks --skip-comments > dump.sql
+mysqldump -h[host] -u[user] -p[database name] --compatible=postgresql --compact --skip-add-drop-table --skip-add-locks --skip-comments > dump.sql
 ```
 > Opinionated I know but it makes our lives much easier
 

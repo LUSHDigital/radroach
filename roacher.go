@@ -64,11 +64,14 @@ func newRoacher(data []byte) *roacher {
 }
 
 func (r *roacher) roach() (output []byte, err error) {
+	// TODO: Abstract each stage into modular testable units.
+	// Stage 1: Syntax.
 	output = r.sourceData
 	for pattern, replacement := range simpleReplacements {
 		output = pattern.ReplaceAll(output, replacement)
 	}
 
+	// Stage 2: Constraints.
 	// Split the source data down by table.
 	tables := tables.FindAll(output, -1)
 
