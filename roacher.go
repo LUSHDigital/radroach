@@ -8,6 +8,7 @@ import (
 
 var (
 	empty = []byte("")
+	space = []byte(" ")
 
 	simpleReplacements = map[*regexp.Regexp][]byte{
 		// Syntax
@@ -33,7 +34,6 @@ var (
 		regexp.MustCompile(" mediumtext "):                              []byte(" TEXT "),
 		regexp.MustCompile(" unsigned "):                                []byte(" "),
 		regexp.MustCompile(" mediumtext,"):                              []byte(" TEXT,"),
-		regexp.MustCompile(` enum\((.*)\) `):                            []byte(" TEXT "),
 		regexp.MustCompile(`int DEFAULT '(.*)',$`):                      []byte("INT DEFAULT $1,"),
 		regexp.MustCompile(`int NOT NULL DEFAULT '(.*)',$`):             []byte("INT NOT NULL DEFAULT $1,"),
 		regexp.MustCompile(`\(decimal(.*)\) NOT NULL DEFAULT '(.*)',$`): []byte("$1 NOT NULL DEFAULT $2,"),
@@ -53,6 +53,9 @@ var (
 	tables         = regexp.MustCompile("(?smU)^(CREATE|INSERT).*;$")
 	tableName      = regexp.MustCompile(`CREATE TABLE "(.*)"`)
 	trailingCommas = regexp.MustCompile(`,\n\);`)
+
+	enumLine = regexp.MustCompile(`(.*enum.*)`)
+	enum     = regexp.MustCompile(` enum\((.*)\) `)
 )
 
 type roacher struct {
@@ -85,6 +88,8 @@ func (r *roacher) roach() (output []byte, err error) {
 		tableConstraints[string(name[1])] = constraints.FindAll(*t, -1)
 		*t = constraints.ReplaceAll(*t, empty)
 
+		processEnums(string(name[1]), t, tableConstraints)
+
 		// Tidy.
 		*t = blankLines.ReplaceAll(*t, empty)
 		*t = trailingCommas.ReplaceAll(*t, []byte("\n);"))
@@ -92,7 +97,7 @@ func (r *roacher) roach() (output []byte, err error) {
 
 	for table, constraints := range tableConstraints {
 		for _, constraint := range constraints {
-			constraint = bytes.Replace(constraint, []byte(","), empty, -1)
+			constraint = bytes.TrimSuffix(constraint, []byte(","))
 			constraint = append(constraint, []byte(";")...)
 
 			tableConstraint := append(
@@ -107,4 +112,32 @@ func (r *roacher) roach() (output []byte, err error) {
 	output = bytes.Join(tables, []byte("\n"))
 
 	return
+}
+
+func processEnums(table string, t *[]byte, c map[string][][]byte) {
+	// If enum-to-check has been requested, replace enums with check constraints,
+	// otherwise, just replace enum identifiers with text identifiers.
+	if opts.enumToCheck {
+		lines := enumLine.FindAllSubmatch(*t, -1)
+
+		for _, line := range lines {
+			// Cleanup the line.
+			l := bytes.Trim(line[0], ` `)
+
+			// Get the column name for the constraint.
+			column := bytes.Trim(bytes.Split(l, space)[0], ` "`)
+
+			// Get the enum values for the constraint.
+			values := enum.FindSubmatch(l)
+			strValues := string(values[1])
+
+			// Append the constraint.
+			c[table] = append(c[table], []byte(fmt.Sprintf(
+				"CONSTRAINT check_%[1]s CHECK (%[1]s IN (%[2]s))",
+				column,
+				strValues)))
+		}
+	}
+
+	*t = enum.ReplaceAll(*t, []byte(" TEXT "))
 }

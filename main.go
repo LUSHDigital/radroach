@@ -9,9 +9,10 @@ import (
 )
 
 type options struct {
-	verbose  bool
-	srcMySQL string
-	dstCrDB  string
+	verbose     bool
+	enumToCheck bool
+	srcMySQL    string
+	dstCrDB     string
 }
 
 var opts options
@@ -30,6 +31,7 @@ func main() {
 	// TODO: Look at using cobra cmd for this.
 	flag.Usage = usage
 	flag.BoolVar(&opts.verbose, "v", false, "verbose logging mode")
+	flag.BoolVar(&opts.enumToCheck, "enum-to-check", false, "convert enums to check constraints")
 	flag.Parse()
 
 	if len(flag.Args()) < 2 {

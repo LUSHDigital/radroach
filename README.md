@@ -15,6 +15,18 @@ mysqldump -h[host] -u[user] -p [database name] --compatible=postgresql --compact
 ```
 > Opinionated I know but it makes our lives much easier
 
+To generate a MySQL dump for a MySQL table hosted in Docker, use the following steps:
+
+* Jump into the MySQL Docker container shell:
+
+``` bash
+docker exec -it <CONTAINER> /bin/bash
+```
+
+* Run `mysqldump` as outlined above.
+
+* Copy the file/contents of dump.sql and use that as the input to `radroach`.
+
 Then you just need to run `radroach` passing it your source file and the name of
 the destination file:
 ```bash
@@ -24,7 +36,9 @@ radroach [FLAGS...] SOURCE_MYSQL_DUMP DESTINATION_CRDB_DUMP
 ### Full Usage
 ```bash
 Usage: radroach [FLAGS...] SOURCE_MYSQL_DUMP DESTINATION_CRDB_DUMP
-  -v	verbose logging mode
+  -enum-to-check
+        convert enums to check constraints
+  -v    verbose logging mode
 ```
 
 ## Roadmap
