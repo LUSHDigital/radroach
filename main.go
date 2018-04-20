@@ -3,13 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags)
-
 	// TODO: Look at using cobra cmd for this.
 	flag.Usage = usage
 	verbose := flag.Bool("verbose", false, "verbose logging mode")

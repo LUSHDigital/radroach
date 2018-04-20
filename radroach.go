@@ -172,9 +172,11 @@ func (r *radroach) roach(input []byte) (output []byte, err error) {
 
 // log only logs errors if radroach is in verbose mode.
 func (r *radroach) log(err error) {
-	if r.verbose {
-		log.Println(err)
+	if !r.verbose {
+		return
 	}
+
+	r.logger.Println(err)
 }
 
 // enumToCheck returns an option modifier to enable enum to check contraints.
@@ -195,8 +197,9 @@ func verboseLogging(v bool) option {
 // file, destination file and any options.
 func newRadRoach(src, dst string, opts ...option) *radroach {
 	rr := &radroach{
-		src: src,
-		dst: dst,
+		src:    src,
+		dst:    dst,
+		logger: log.New(os.Stdout, "", log.LstdFlags),
 	}
 
 	for _, opt := range opts {
