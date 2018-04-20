@@ -3,6 +3,9 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
 	"regexp"
 )
 
@@ -58,18 +61,63 @@ var (
 	enum     = regexp.MustCompile(` enum\((.*)\) `)
 )
 
-type roacher struct {
-	sourceData []byte
+// option defines a function which modifies an element of radroach config.
+type option func(*radroach)
+
+// radroach defines the config required to roach a mysql dump.
+type radroach struct {
+	enumToCheck bool
+	dst         string
+	src         string
+	logger      *log.Logger
+	verbose     bool
 }
 
-func newRoacher(data []byte) *roacher {
-	return &roacher{data}
+// run reads the source file, performs the roach and persists the output.
+func (r *radroach) run() {
+	// Get info on the source file.
+	srcInfo, err := os.Stat(r.src)
+	if err != nil {
+		r.log(fmt.Errorf("could not stat source file %q: %s", r.src, err))
+
+		fmt.Println("Hmm, couldn't open the source mysql file for reading. Make sure the path and permissions are correct.")
+		os.Exit(1)
+	}
+
+	// Read the source file.
+	input, err := ioutil.ReadFile(r.src)
+	if err != nil {
+		r.log(fmt.Errorf("could not read file %q: %s", r.src, err))
+
+		fmt.Println("Hmm, couldn't read the source mysql file for reading. Make sure the path and permissions are correct.")
+		os.Exit(1)
+	}
+
+	// Do the roaching.
+	output, err := r.roach(input)
+	if err != nil {
+		r.log(fmt.Errorf("could not run mysql data: %s", err))
+
+		fmt.Println("Damn, couldn't convert the mysql dump to crdb. Make sure the source file was prepared correctly.")
+		os.Exit(1)
+	}
+
+	// Persist the output back to disk.
+	err = ioutil.WriteFile(r.dst, output, srcInfo.Mode())
+	if err != nil {
+		r.log(fmt.Errorf("could not save the crdb data to file %q: %s", r.dst, err))
+
+		fmt.Println("Oh dear, couldn't write the crdb data. Make sure you have the correct permissions.")
+		os.Exit(1)
+	}
 }
 
-func (r *roacher) roach() (output []byte, err error) {
+// roach performs the replacements and transformations to convert the source
+// mysql data for usage with crdb. It will return the output bytes or an error.
+func (r *radroach) roach(input []byte) (output []byte, err error) {
 	// TODO: Abstract each stage into modular testable units.
 	// Stage 1: Syntax.
-	output = r.sourceData
+	output = input
 	for pattern, replacement := range simpleReplacements {
 		output = pattern.ReplaceAll(output, replacement)
 	}
@@ -92,7 +140,10 @@ func (r *roacher) roach() (output []byte, err error) {
 		*t = constraints.ReplaceAll(*t, empty)
 
 		// Stage 2.2: Enums.
-		processEnums(string(name[1]), t, tableConstraints)
+		if r.enumToCheck {
+			enumsToChecks(string(name[1]), t, tableConstraints)
+		}
+		*t = enum.ReplaceAll(*t, []byte(" TEXT "))
 
 		// Stage 2.3: Tidy.
 		*t = blankLines.ReplaceAll(*t, empty)
@@ -119,30 +170,66 @@ func (r *roacher) roach() (output []byte, err error) {
 	return
 }
 
-func processEnums(table string, t *[]byte, c map[string][][]byte) {
-	// If enum-to-check has been requested, replace enums with check constraints,
-	// otherwise, just replace enum identifiers with text identifiers.
-	if opts.enumToCheck {
-		lines := enumLine.FindAllSubmatch(*t, -1)
+// log only logs errors if radroach is in verbose mode.
+func (r *radroach) log(err error) {
+	if r.verbose {
+		log.Println(err)
+	}
+}
 
-		for _, line := range lines {
-			// Cleanup the line.
-			l := bytes.Trim(line[0], ` `)
+// enumToCheck returns an option modifier to enable enum to check contraints.
+func enumToCheck(e bool) option {
+	return func(r *radroach) {
+		r.enumToCheck = e
+	}
+}
 
-			// Get the column name for the constraint.
-			column := bytes.Trim(bytes.Split(l, space)[0], ` "`)
+// verboseLogging returns an option modifier to enable verbose logging.
+func verboseLogging(v bool) option {
+	return func(r *radroach) {
+		r.verbose = v
+	}
+}
 
-			// Get the enum values for the constraint.
-			values := enum.FindSubmatch(l)
-			strValues := string(values[1])
-
-			// Append the constraint.
-			c[table] = append(c[table], []byte(fmt.Sprintf(
-				"CONSTRAINT check_%[1]s CHECK (%[1]s IN (%[2]s))",
-				column,
-				strValues)))
-		}
+// newRadRoach instantiates a new instance of radroach with the required source
+// file, destination file and any options.
+func newRadRoach(src, dst string, opts ...option) *radroach {
+	rr := &radroach{
+		src: src,
+		dst: dst,
 	}
 
-	*t = enum.ReplaceAll(*t, []byte(" TEXT "))
+	for _, opt := range opts {
+		opt(rr)
+	}
+
+	return rr
+}
+
+// enumsToChecks converts MySQL ENUM fields to PgSQL style constraint checks.
+func enumsToChecks(table string, t *[]byte, c map[string][][]byte) {
+	// If enum-to-check has been requested, replace enums with check constraints,
+	// otherwise, just replace enum identifiers with text identifiers.
+	lines := enumLine.FindAllSubmatch(*t, -1)
+
+	for _, line := range lines {
+		// Cleanup the line.
+		l := bytes.Trim(line[0], ` `)
+
+		// Get the column name for the constraint.
+		column := bytes.Trim(bytes.Split(l, space)[0], ` "`)
+
+		// Get the enum values for the constraint.
+		values := enum.FindSubmatch(l)
+		strValues := string(values[1])
+
+		// Append the constraint.
+		c[table] = append(c[table], []byte(
+			fmt.Sprintf(
+				"CONSTRAINT check_%[1]s CHECK (%[1]s IN (%[2]s))",
+				column,
+				strValues,
+			),
+		))
+	}
 }

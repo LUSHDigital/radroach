@@ -37,8 +37,9 @@ radroach [FLAGS...] SOURCE_MYSQL_DUMP DESTINATION_CRDB_DUMP
 ```bash
 Usage: radroach [FLAGS...] SOURCE_MYSQL_DUMP DESTINATION_CRDB_DUMP
   -enum-to-check
-        convert enums to check constraints
-  -v    verbose logging mode
+    	convert enums to check constraints
+  -verbose
+    	verbose logging mode
 ```
 
 ## Roadmap
@@ -47,5 +48,6 @@ Usage: radroach [FLAGS...] SOURCE_MYSQL_DUMP DESTINATION_CRDB_DUMP
 - [x] Break dump down by table, extract foreign keys
 - [x] Re-write dump with foreign keys after table creation
 - [x] Produce a working SQL dump for CockroachDB
+- [ ] Refactor codebase for readability and testability
 - [ ] Test all the things
 - [ ] Cobra cmd support
