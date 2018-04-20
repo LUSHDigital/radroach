@@ -74,7 +74,7 @@ func (r *roacher) roach() (output []byte, err error) {
 		output = pattern.ReplaceAll(output, replacement)
 	}
 
-	// Stage 2: Constraints.
+	// Stage 2: Tables.
 	// Split the source data down by table.
 	tables := tables.FindAll(output, -1)
 
@@ -87,17 +87,19 @@ func (r *roacher) roach() (output []byte, err error) {
 			continue
 		}
 
-		// Extract the constraints from each table definition.
+		// Stage 2.1: Extract the constraints from each table definition.
 		tableConstraints[string(name[1])] = constraints.FindAll(*t, -1)
 		*t = constraints.ReplaceAll(*t, empty)
 
+		// Stage 2.2: Enums.
 		processEnums(string(name[1]), t, tableConstraints)
 
-		// Tidy.
+		// Stage 2.3: Tidy.
 		*t = blankLines.ReplaceAll(*t, empty)
 		*t = trailingCommas.ReplaceAll(*t, []byte("\n);"))
 	}
 
+	// Stage 2.4: Rewrite constraints.
 	for table, constraints := range tableConstraints {
 		for _, constraint := range constraints {
 			constraint = bytes.TrimSuffix(constraint, []byte(","))
