@@ -19,9 +19,9 @@ func main() {
 	}
 
 	src := flag.Args()[0]
-  dst := flag.Args()[1]
+	dst := flag.Args()[1]
 
-  if len(src) == 0 || len(dst) == 0 {
+	if len(src) == 0 || len(dst) == 0 {
 		usage()
 		os.Exit(1)
 	}
