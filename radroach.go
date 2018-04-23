@@ -128,26 +128,29 @@ func (r *radroach) roach(input []byte) (output []byte, err error) {
 
 	tableConstraints := make(map[string][][]byte)
 	for i := range tables {
-		t := &tables[i]
+		t := tables[i]
 
-		name := tableName.FindSubmatch(*t)
+		name := tableName.FindSubmatch(t)
 		if name == nil {
 			continue
 		}
+		tableName := string(name[1])
 
 		// Stage 2.1: Extract the constraints from each table definition.
-		tableConstraints[string(name[1])] = constraints.FindAll(*t, -1)
-		*t = constraints.ReplaceAll(*t, empty)
+		tableConstraints[tableName] = constraints.FindAll(t, -1)
+		t = constraints.ReplaceAll(t, empty)
 
 		// Stage 2.2: Enums.
 		if r.enumToCheck {
-			enumsToChecks(string(name[1]), t, tableConstraints)
+			tableConstraints[tableName] = enumsToChecks(t, tableConstraints[tableName])
 		}
-		*t = enum.ReplaceAll(*t, []byte(" TEXT "))
+		t = enum.ReplaceAll(t, []byte(" TEXT "))
 
 		// Stage 2.3: Tidy.
-		*t = blankLines.ReplaceAll(*t, empty)
-		*t = trailingCommas.ReplaceAll(*t, []byte("\n);"))
+		t = blankLines.ReplaceAll(t, empty)
+		t = trailingCommas.ReplaceAll(t, []byte("\n);"))
+
+		tables[i] = t
 	}
 
 	// Stage 2.4: Rewrite constraints.
@@ -179,7 +182,7 @@ func (r *radroach) log(err error) {
 	r.logger.Println(err)
 }
 
-// enumToCheck returns an option modifier to enable enum to check contraints.
+// enumToCheck returns an option modifier to enable enum to check constraints.
 func enumToCheck(e bool) option {
 	return func(r *radroach) {
 		r.enumToCheck = e
@@ -210,10 +213,9 @@ func newRadRoach(src, dst string, opts ...option) *radroach {
 }
 
 // enumsToChecks converts MySQL ENUM fields to PgSQL style constraint checks.
-func enumsToChecks(table string, t *[]byte, c map[string][][]byte) {
-	// If enum-to-check has been requested, replace enums with check constraints,
-	// otherwise, just replace enum identifiers with text identifiers.
-	lines := enumLine.FindAllSubmatch(*t, -1)
+func enumsToChecks(t []byte, input [][]byte) [][]byte {
+	// Extract each line containing an enum from the table DDL.
+	lines := enumLine.FindAllSubmatch(t, -1)
 
 	for _, line := range lines {
 		// Cleanup the line.
@@ -227,7 +229,7 @@ func enumsToChecks(table string, t *[]byte, c map[string][][]byte) {
 		strValues := string(values[1])
 
 		// Append the constraint.
-		c[table] = append(c[table], []byte(
+		input = append(input, []byte(
 			fmt.Sprintf(
 				"CONSTRAINT check_%[1]s CHECK (%[1]s IN (%[2]s))",
 				column,
@@ -235,4 +237,6 @@ func enumsToChecks(table string, t *[]byte, c map[string][][]byte) {
 			),
 		))
 	}
+
+	return input
 }
