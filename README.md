@@ -1,4 +1,4 @@
-# Radroach
+# Radroach [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://raw.githubusercontent.com/LUSHDigital/radroach/master/LICENSE) [![Go Report Card](https://goreportcard.com/badge/github.com/LUSHDigital/radroach)](https://goreportcard.com/report/github.com/LUSHDigital/radroach)
 A _radical_ tool for converting [MySQL](https://www.mysql.com) database dumps for use with [CockroachDB](https://www.cockroachlabs.com/product/cockroachdb)
 
 ## Installation
